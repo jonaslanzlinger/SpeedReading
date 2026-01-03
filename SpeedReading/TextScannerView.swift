@@ -35,36 +35,39 @@ struct TextScannerView: UIViewControllerRepresentable {
             _ controller: VNDocumentCameraViewController,
             didFinishWith scan: VNDocumentCameraScan
         ) {
-
             parent.scannedText = ""
-
-            let textRecognitionRequest = VNRecognizeTextRequest { request, error in
-                guard let observations = request.results as? [VNRecognizedTextObservation] else {
-                    return
-                }
-
-                let recognizedStrings = observations.compactMap {
-                    $0.topCandidates(1).first?.string
-                }
-
-                DispatchQueue.main.async { [weak self] in
-                    guard let self else { return }
-                    self.parent.scannedText = recognizedStrings.joined(separator: " ")
-                    self.parent.dismiss()
-                }
-            }
-
-            textRecognitionRequest.recognitionLevel = .accurate
-            textRecognitionRequest.usesLanguageCorrection = true
 
             let images = (0..<scan.pageCount).compactMap {
                 scan.imageOfPage(at: $0).cgImage
             }
 
             DispatchQueue.global(qos: .userInitiated).async {
+                var allText: [String] = []
+
                 for image in images {
+                    let request = VNRecognizeTextRequest { request, _ in
+                        guard let observations = request.results as? [VNRecognizedTextObservation] else {
+                            return
+                        }
+
+                        let strings = observations.compactMap {
+                            $0.topCandidates(1).first?.string
+                        }
+
+                        allText.append(contentsOf: strings)
+                    }
+
+                    request.recognitionLevel = .fast
+                    request.usesLanguageCorrection = false
+
                     let handler = VNImageRequestHandler(cgImage: image)
-                    try? handler.perform([textRecognitionRequest])
+                    try? handler.perform([request])
+                }
+
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    self.parent.scannedText = allText.joined(separator: " ")
+                    self.parent.dismiss()
                 }
             }
         }

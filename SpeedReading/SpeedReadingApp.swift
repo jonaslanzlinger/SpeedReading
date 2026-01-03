@@ -9,9 +9,21 @@ import SwiftUI
 
 @main
 struct SpeedReadingApp: App {
+    @StateObject private var store = ReadingStore()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            TabView {
+                ContentView(store: store)
+                    .tabItem {
+                        Label("Session", systemImage: "book")
+                    }
+
+                CalendarView(store: store)
+                    .tabItem {
+                        Label("Calendar", systemImage: "calendar")
+                    }
+            }
         }
     }
 }
